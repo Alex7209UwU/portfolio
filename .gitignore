@@ -1,0 +1,16 @@
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Config export (user data)
+*.json
+
+# Local test server logs
+*.log
