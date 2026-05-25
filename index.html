@@ -264,6 +264,89 @@
     </div>
   </footer>
 
+  <!-- ============ SETUP WIZARD ============ -->
+  <div class="setup-overlay" id="setupOverlay" style="display:none">
+    <div class="setup-wizard" id="setupWizard">
+      <div class="setup-steps">
+        <div class="setup-step-indicator active" data-step="1">1</div>
+        <div class="setup-step-line"></div>
+        <div class="setup-step-indicator" data-step="2">2</div>
+        <div class="setup-step-line"></div>
+        <div class="setup-step-indicator" data-step="3">3</div>
+        <div class="setup-step-line"></div>
+        <div class="setup-step-indicator" data-step="4">4</div>
+      </div>
+
+      <!-- STEP 1: Mot de passe -->
+      <div class="setup-step-content active" data-step="1">
+        <div class="setup-icon"><i class="fas fa-lock"></i></div>
+        <h2>Sécurisez votre administration</h2>
+        <p class="setup-desc">Choisissez un mot de passe pour protéger l'accès au panneau d'administration.</p>
+        <div class="setup-fields">
+          <div class="setup-field">
+            <label>Mot de passe</label>
+            <input type="password" id="setupPwd" placeholder="Minimum 4 caractères" autocomplete="new-password">
+          </div>
+          <div class="setup-field">
+            <label>Confirmer le mot de passe</label>
+            <input type="password" id="setupPwdConfirm" placeholder="Retaper le mot de passe" autocomplete="new-password">
+          </div>
+        </div>
+        <p class="setup-field-error" id="setupPwdError" style="display:none"></p>
+      </div>
+
+      <!-- STEP 2: Email principal -->
+      <div class="setup-step-content" data-step="2">
+        <div class="setup-icon"><i class="fas fa-envelope"></i></div>
+        <h2>Où recevoir vos messages ?</h2>
+        <p class="setup-desc">Les messages du formulaire de contact vous seront envoyés à cette adresse via FormSubmit (100% gratuit, illimité).</p>
+        <div class="setup-fields">
+          <div class="setup-field">
+            <label>Email de réception *</label>
+            <input type="email" id="setupPrimaryEmail" placeholder="votre@email.com" autocomplete="email">
+          </div>
+        </div>
+        <p class="setup-field-error" id="setupEmailError" style="display:none"></p>
+      </div>
+
+      <!-- STEP 3: Email secondaire -->
+      <div class="setup-step-content" data-step="3">
+        <div class="setup-icon"><i class="fas fa-address-card"></i></div>
+        <h2>Adresse de contact public</h2>
+        <p class="setup-desc">Cette adresse sera affichée sur votre portfolio et utilisée comme identité de réponse. Laissez vide pour utiliser votre adresse de réception.</p>
+        <div class="setup-fields">
+          <div class="setup-field">
+            <label>Email public (optionnel)</label>
+            <input type="email" id="setupSecondaryEmail" placeholder="contact@exemple.com" autocomplete="email">
+          </div>
+          <div class="setup-field toggle-field" style="justify-content:flex-start;gap:10px">
+            <label class="switch"><input type="checkbox" id="setupSendCopy" checked><span class="slider"></span></label>
+            <span style="font-size:0.85rem;color:var(--text-secondary)">Envoyer une copie à l'expéditeur</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4: Test & Terminer -->
+      <div class="setup-step-content" data-step="4">
+        <div class="setup-icon"><i class="fas fa-check-circle" style="color:#22c55e"></i></div>
+        <h2>Configuration terminée !</h2>
+        <p class="setup-desc">Votre portfolio est configuré. Vous pouvez envoyer un email de test pour vérifier que tout fonctionne.</p>
+        <div class="setup-test-status" id="setupTestStatus"></div>
+        <div class="setup-actions" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" id="setupTestBtn"><i class="fas fa-paper-plane"></i> Envoyer un email de test</button>
+          <button class="btn btn-primary" id="setupFinishBtn"><i class="fas fa-arrow-right"></i> Accéder à l'administration</button>
+        </div>
+      </div>
+
+      <div class="setup-nav">
+        <button class="btn btn-ghost btn-sm" id="setupPrev"><i class="fas fa-arrow-left"></i> Précédent</button>
+        <div class="setup-nav-right">
+          <button class="btn btn-primary" id="setupNext">Suivant <i class="fas fa-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ ADMIN PANEL ============ -->
   <div class="admin-overlay" id="adminOverlay"></div>
 
@@ -414,20 +497,28 @@
           <input type="text" id="adminAddress" placeholder="123 rue, Ville">
         </div>
 
-        <div class="admin-field" id="adminFormsubmitField" style="display:none">
-          <label>Votre email (pour FormSubmit)</label>
-          <input type="email" id="adminFormsubmitEmail" placeholder="votre@email.com">
-          <span class="admin-hint">Les messages vous seront forwardés sans limite. Ouvre la popup confirmation.</span>
-        </div>
-
         <div class="admin-section-title"><i class="fas fa-paper-plane"></i> Formulaire de contact</div>
         <div class="admin-field">
           <label>Service d'envoi</label>
             <select id="adminFormService">
-            <option value="formspree">Formspree (gratuit, 50/mois)</option>
             <option value="formsubmit">FormSubmit (100% gratuit, illimité)</option>
+            <option value="formspree">Formspree (gratuit, 50/mois)</option>
             <option value="mailto">Mailto (ouvre le client email)</option>
           </select>
+        </div>
+        <div class="admin-field" id="adminPrimaryEmailField">
+          <label>Email de réception *</label>
+          <input type="email" id="adminPrimaryEmail" placeholder="votre@email.com">
+          <span class="admin-hint">Les messages vous seront envoyés à cette adresse (FormSubmit).</span>
+        </div>
+        <div class="admin-field">
+          <label>Email public (affiché sur le site)</label>
+          <input type="email" id="adminSecondaryEmail" placeholder="contact@exemple.com">
+          <span class="admin-hint">Laissez vide pour utiliser l'email de réception.</span>
+        </div>
+        <div class="admin-field toggle-field">
+          <label>Copie à l'expéditeur</label>
+          <label class="switch"><input type="checkbox" id="adminSendCopy" checked><span class="slider"></span></label>
         </div>
         <div class="admin-field" id="adminFormspreeField">
           <label>URL Formspree</label>

@@ -22,7 +22,7 @@
       address: '102 Rue de la république, 38430 Moirans',
       extra: []
     },
-    contact: { service: 'formspree', formspreeUrl: '', formsubmitEmail: '' },
+    contact: { service: 'formsubmit', primaryEmail: '', secondaryEmail: '', sendCopy: true, formspreeUrl: '', formsubmitEmail: '' },
     sections: { cv: true, letter: true, projects: true, blog: true },
     blog: [],
     design: { accentColor: '#3b82f6', defaultTheme: 'dark', fontHeading: "'Poppins','Inter',sans-serif", customCSS: '' },
@@ -45,6 +45,11 @@
           const descs = ['Suite collaborative open-source française.', 'Système d\'affichage dynamique pour mairies.'];
           cfg.projects.items = ids.map((id, i) => ({ name: names[i] || 'Projet', desc: descs[i] || '', gitlabId: id, url: '' }));
           delete cfg.projects.gitlabIds;
+        }
+        // Migrate old contact format
+        if (cfg.contact) {
+          if (cfg.contact.formsubmitEmail && !cfg.contact.primaryEmail) cfg.contact.primaryEmail = cfg.contact.formsubmitEmail;
+          if (cfg.social && cfg.social.email && !cfg.contact.secondaryEmail) cfg.contact.secondaryEmail = cfg.social.email;
         }
         return cfg;
       }
@@ -404,7 +409,7 @@
       const n = name.value.trim(), em = email.value.trim(), sub = subject ? subject.value.trim() : '', msg = message.value.trim();
       if (!n || !em || !msg) { showFormStatus('Veuillez remplir tous les champs obligatoires', 'error'); return; }
       setSubmitLoading();
-      const targetEmail = config.contact.formsubmitEmail || config.social.email;
+      const targetEmail = config.contact.primaryEmail || config.contact.formsubmitEmail || config.social.email;
       if (config.contact && config.contact.service === 'formspree' && config.contact.formspreeUrl) {
         fetch(config.contact.formspreeUrl, {
           method: 'POST',
@@ -416,11 +421,17 @@
         }).catch(() => {
           showFormStatus('Erreur réseau. Utilisez le lien email direct ci-dessous.', 'error');
         }).finally(() => setSubmitDone());
-      } else if (config.contact && config.contact.service === 'formsubmit' && targetEmail) {
+      } else       if (config.contact && config.contact.service === 'formsubmit' && targetEmail) {
+        const formData = {
+          name: n, email: em, subject: sub || 'Message depuis portfolio', message: msg,
+          _replyto: config.contact.secondaryEmail || config.contact.primaryEmail || config.social.email,
+          _template: 'table'
+        };
+        if (config.contact.sendCopy) formData._cc = em;
         fetch('https://formsubmit.co/ajax/' + encodeURIComponent(targetEmail), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ name: n, email: em, subject: sub || 'Message depuis portfolio', message: msg })
+          body: JSON.stringify(formData)
         }).then(r => {
           if (r.ok) { showFormStatus('Merci ! Votre message a été envoyé.', 'success'); form.reset(); }
           else { showFormStatus('Erreur lors de l\'envoi. Réessayez.', 'error'); }
@@ -428,7 +439,8 @@
           showFormStatus('Erreur réseau. Utilisez le lien email direct.', 'error');
         }).finally(() => setSubmitDone());
       } else {
-        const mailto = 'mailto:' + config.social.email + '?subject=' + encodeURIComponent(sub || 'Message depuis portfolio') + '&body=' + encodeURIComponent('Nom: ' + n + '\nEmail: ' + em + '\n\n' + msg);
+        const mailtoEmail = config.contact.secondaryEmail || config.contact.primaryEmail || config.social.email;
+        const mailto = 'mailto:' + mailtoEmail + '?subject=' + encodeURIComponent(sub || 'Message depuis portfolio') + '&body=' + encodeURIComponent('Nom: ' + n + '\nEmail: ' + em + '\n\n' + msg);
         window.open(mailto);
         showFormStatus('Redirection vers votre client email...', 'success');
         setSubmitDone();
@@ -684,8 +696,10 @@
     setVal('adminPhone', config.social.phone);
     setVal('adminAddress', config.social.address);
     setVal('adminFormService', config.contact.service);
+    setVal('adminPrimaryEmail', config.contact.primaryEmail || '');
+    setVal('adminSecondaryEmail', config.contact.secondaryEmail || '');
+    setCheck('adminSendCopy', config.contact.sendCopy !== false);
     setVal('adminFormspreeUrl', config.contact.formspreeUrl);
-    setVal('adminFormsubmitEmail', config.contact.formsubmitEmail);
     setVal('adminRecoveryEmail', config.adminEmail || '');
     toggleFormFields();
     setupDropZones();
@@ -695,11 +709,11 @@
   function toggleFormFields() {
     const svc = el('adminFormService');
     const spree = el('adminFormspreeField');
-    const submit = el('adminFormsubmitField');
+    const primaryField = el('adminPrimaryEmailField');
     if (!svc) return;
     const val = svc.value;
     if (spree) spree.style.display = val === 'formspree' ? '' : 'none';
-    if (submit) submit.style.display = val === 'formsubmit' ? '' : 'none';
+    if (primaryField) primaryField.style.display = val === 'formsubmit' ? '' : 'none';
   }
   const formSvc = el('adminFormService');
   if (formSvc) formSvc.addEventListener('change', toggleFormFields);
@@ -751,9 +765,15 @@
     config.social.phone = g('adminPhone');
     config.social.address = g('adminAddress');
     const svcEl = el('adminFormService');
-    config.contact.service = svcEl ? svcEl.value : 'formspree';
+    config.contact.service = svcEl ? svcEl.value : 'formsubmit';
+    config.contact.primaryEmail = g('adminPrimaryEmail');
+    config.contact.secondaryEmail = g('adminSecondaryEmail');
+    config.contact.sendCopy = ck('adminSendCopy');
     config.contact.formspreeUrl = g('adminFormspreeUrl');
-    config.contact.formsubmitEmail = g('adminFormsubmitEmail');
+    config.contact.formsubmitEmail = g('adminPrimaryEmail'); // backwards compat
+    // Sync social.email with secondaryEmail for display
+    if (config.contact.secondaryEmail) config.social.email = config.contact.secondaryEmail;
+    else if (config.contact.primaryEmail) config.social.email = config.contact.primaryEmail;
     config.adminEmail = g('adminRecoveryEmail');
     const acEl = el('adminAccentColor');
     config.design.accentColor = acEl ? acEl.value : '#3b82f6';
@@ -963,10 +983,11 @@
 
   // ========== CONTACT LINKS ==========
   function updateContactLinks() {
+    const publicEmail = config.contact.secondaryEmail || config.contact.primaryEmail || config.social.email;
     const footerEmail = el('footerEmail');
-    if (footerEmail && config.social.email) footerEmail.href = 'mailto:' + config.social.email;
+    if (footerEmail && publicEmail) footerEmail.href = 'mailto:' + publicEmail;
     const direct = el('formDirectEmail');
-    if (direct && config.social.email) { direct.href = 'mailto:' + config.social.email; direct.textContent = config.social.email; }
+    if (direct && publicEmail) { direct.href = 'mailto:' + publicEmail; direct.textContent = publicEmail; }
   }
 
   // ========== KEYBOARD ==========
@@ -976,6 +997,131 @@
       isAdmin ? closeAdmin() : openPwdModal();
     }
     if (e.key === 'Escape') { if (isAdmin) closeAdmin(); closePwdModal(); closePinModal(); }
+  });
+
+  // ========== SETUP WIZARD ==========
+  let setupStep = 1; const TOTAL_STEPS = 4;
+
+  function showSetupWizard() {
+    setupStep = 1;
+    const overlay = el('setupOverlay');
+    if (overlay) overlay.style.display = 'flex';
+    updateSetupStep();
+    document.body.style.overflow = 'hidden';
+  }
+
+  function hideSetupWizard() {
+    const overlay = el('setupOverlay');
+    if (overlay) overlay.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  function updateSetupStep() {
+    const indicators = document.querySelectorAll('.setup-step-indicator');
+    const contents = document.querySelectorAll('.setup-step-content');
+    indicators.forEach(i => i.classList.toggle('active', parseInt(i.dataset.step) <= setupStep));
+    contents.forEach(c => c.classList.toggle('active', parseInt(c.dataset.step) === setupStep));
+    const prev = el('setupPrev'), next = el('setupNext');
+    if (prev) prev.style.visibility = setupStep <= 1 ? 'hidden' : 'visible';
+    if (next) {
+      if (setupStep >= TOTAL_STEPS) { next.style.display = 'none'; }
+      else { next.style.display = ''; next.innerHTML = 'Suivant <i class="fas fa-arrow-right"></i>'; }
+    }
+    // Clear errors on step change
+    ['setupPwdError','setupEmailError'].forEach(id => { const e = el(id); if (e) e.style.display = 'none'; });
+  }
+
+  function validateSetupStep(step) {
+    if (step === 1) {
+      const pwd = el('setupPwd'), confirm = el('setupPwdConfirm');
+      if (!pwd || !confirm) return false;
+      if (!pwd.value || pwd.value.length < 4) {
+        const err = el('setupPwdError'); if (err) { err.textContent = 'Minimum 4 caractères'; err.style.display = 'block'; } return false;
+      }
+      if (pwd.value !== confirm.value) {
+        const err = el('setupPwdError'); if (err) { err.textContent = 'Les mots de passe ne correspondent pas'; err.style.display = 'block'; } return false;
+      }
+      return true;
+    }
+    if (step === 2) {
+      const email = el('setupPrimaryEmail');
+      if (!email) return false;
+      if (!email.value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
+        const err = el('setupEmailError'); if (err) { err.textContent = 'Adresse email invalide'; err.style.display = 'block'; } return false;
+      }
+      return true;
+    }
+    return true; // steps 3 and 4 always valid
+  }
+
+  function saveSetupConfig() {
+    const pwd = el('setupPwd');
+    const primary = el('setupPrimaryEmail');
+    const secondary = el('setupSecondaryEmail');
+    const sendCopy = el('setupSendCopy');
+    if (pwd && pwd.value) config.password = pwd.value; // will be hashed by migratePassword
+    if (primary) {
+      config.contact.primaryEmail = primary.value.trim();
+      config.contact.service = 'formsubmit';
+    }
+    if (secondary && secondary.value.trim()) {
+      config.contact.secondaryEmail = secondary.value.trim();
+      config.social.email = secondary.value.trim();
+    } else {
+      config.contact.secondaryEmail = config.contact.primaryEmail;
+      config.social.email = config.contact.primaryEmail;
+    }
+    if (sendCopy) config.contact.sendCopy = sendCopy.checked;
+    saveConfig();
+  }
+
+  // Setup wizard event listeners
+  const setupNext = el('setupNext');
+  if (setupNext) setupNext.addEventListener('click', () => {
+    if (!validateSetupStep(setupStep)) return;
+    if (setupStep < TOTAL_STEPS) {
+      setupStep++;
+      updateSetupStep();
+    }
+  });
+  const setupPrev = el('setupPrev');
+  if (setupPrev) setupPrev.addEventListener('click', () => {
+    if (setupStep > 1) { setupStep--; updateSetupStep(); }
+  });
+  // Enter key in inputs advances to next step
+  document.querySelectorAll('.setup-fields input').forEach(inp => {
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && setupNext && setupStep < TOTAL_STEPS && setupNext.style.display !== 'none') setupNext.click();
+    });
+  });
+  const setupTestBtn = el('setupTestBtn');
+  if (setupTestBtn) setupTestBtn.addEventListener('click', async () => {
+    const status = el('setupTestStatus');
+    if (!status) return;
+    const email = config.contact.primaryEmail || config.social.email;
+    if (!email) { status.innerHTML = '<p style="color:#ef4444"><i class="fas fa-times"></i> Aucun email configuré</p>'; return; }
+    status.innerHTML = '<p style="color:var(--accent)"><i class="fas fa-spinner fa-spin"></i> Envoi du test...</p>';
+    try {
+      const r = await fetch('https://formsubmit.co/ajax/' + encodeURIComponent(email), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ name: 'Test', email: email, subject: 'Test de configuration', message: 'Ceci est un email de test depuis votre portfolio.', _template: 'table' })
+      });
+      if (r.ok) status.innerHTML = '<p style="color:#22c55e"><i class="fas fa-check-circle"></i> Test envoyé ! Vérifiez votre boîte de réception.</p>';
+      else status.innerHTML = '<p style="color:#ef4444"><i class="fas fa-times"></i> Erreur d\'envoi. Vérifiez l\'adresse et réessayez.</p>';
+    } catch(e) {
+      status.innerHTML = '<p style="color:#ef4444"><i class="fas fa-times"></i> Erreur réseau. Vérifiez votre connexion.</p>';
+    }
+  });
+  const setupFinish = el('setupFinishBtn');
+  if (setupFinish) setupFinish.addEventListener('click', async () => {
+    saveSetupConfig();
+    if (config.password && !isHashed(config.password)) {
+      config.password = await hashPassword(config.password);
+      saveConfig();
+    }
+    hideSetupWizard();
+    openAdmin();
   });
 
   // ========== MIGRATE PASSWORD ==========
@@ -1013,6 +1159,10 @@
       initAOS();
       const theme = localStorage.getItem('portfolio_theme') || (config.design ? config.design.defaultTheme : 'dark') || 'dark';
       setTheme(theme);
+      // Show setup wizard if first visit (no primary email configured)
+      if (!config.contact.primaryEmail) {
+        setTimeout(() => showSetupWizard(), 500);
+      }
     } catch(e) {
       console.error('Init error:', e);
     }
