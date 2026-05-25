@@ -8,14 +8,30 @@
   <meta property="og:title" content="Alexis AILHAS-GIROUD | Portfolio">
   <meta property="og:description" content="Portfolio d'Alexis AILHAS-GIROUD — Bac Pro CIEL, administration réseaux et open source.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://alex7209.github.io/portfolio/">
-  <script>document.querySelector('meta[property="og:url"]').content=window.location.href.split('?')[0];</script>
+  <meta property="og:image" content="https://alex7209uwu.github.io/portfolio/og-image.png">
+  <meta property="og:url" content="https://alex7209uwu.github.io/portfolio/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Alexis AILHAS-GIROUD | Portfolio">
+  <meta name="twitter:description" content="Portfolio d'Alexis AILHAS-GIROUD — Bac Pro CIEL, administration réseaux et open source.">
+  <script>document.querySelector('meta[property="og:url"]').content=window.location.href.split('?')[0];document.querySelector('meta[property="og:image"]').content=window.location.origin+'/portfolio/og-image.png';</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Alexis AILHAS-GIROUD",
+    "jobTitle": "Stage IT · Administration Réseaux",
+    "url": "https://alex7209uwu.github.io/portfolio/",
+    "sameAs": ["https://gitlab.com/alex7209","https://www.linkedin.com/in/alexis-ailhas-giroud-991280354/"]
+  }
+  </script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233b82f6'/><text x='50' y='68' font-size='55' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>A</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+  <a href="#hero" class="skip-link">Aller au contenu</a>
 
   <!-- ============ NAV ============ -->
   <nav class="navbar" id="navbar">
@@ -41,7 +57,7 @@
   </nav>
 
   <!-- ============ HERO ============ -->
-  <section class="section hero" id="hero">
+  <section class="section hero" id="hero" role="main">
     <div class="hero-bg"></div>
     <div class="container hero-content">
       <div class="hero-avatar" data-aos="fade-up">
@@ -193,21 +209,21 @@
             <i class="fas fa-envelope"></i>
             <div>
               <strong data-i18n="contact.emailLabel">Email</strong>
-              <span class="editable" data-key="contact.email">alexis.giroudpro@proton.me</span>
+              <span class="editable" data-key="social.email">alexis.giroudpro@proton.me</span>
             </div>
           </div>
           <div class="contact-item">
             <i class="fas fa-phone"></i>
             <div>
               <strong data-i18n="contact.phoneLabel">Téléphone</strong>
-              <span class="editable" data-key="contact.phone">07 83 25 97 65</span>
+              <span class="editable" data-key="social.phone">07 83 25 97 65</span>
             </div>
           </div>
           <div class="contact-item">
             <i class="fas fa-location-dot"></i>
             <div>
               <strong data-i18n="contact.addressLabel">Adresse</strong>
-              <span class="editable" data-key="contact.address">102 Rue de la république, 38430 Moirans</span>
+              <span class="editable" data-key="social.address">102 Rue de la république, 38430 Moirans</span>
             </div>
           </div>
           <div class="contact-item">
@@ -316,6 +332,32 @@
             <label class="switch"><input type="checkbox" id="toggleBlog" checked><span class="slider"></span></label>
           </div>
         </div>
+
+        <div class="admin-section-title"><i class="fas fa-code"></i> Projets</div>
+        <div class="admin-project-form">
+          <div class="admin-field-group" style="grid-template-columns:1fr 2fr">
+            <div class="admin-field">
+              <label>ID Projet GitLab</label>
+              <input type="text" id="projectGitlabId" placeholder="80307614">
+            </div>
+            <div class="admin-field">
+              <label>URL personnalisée</label>
+              <input type="url" id="projectUrl" placeholder="https://github.com/...">
+            </div>
+          </div>
+          <div class="admin-field-group" style="grid-template-columns:1fr 1fr">
+            <div class="admin-field">
+              <label>Nom du projet</label>
+              <input type="text" id="projectName" placeholder="Mon projet">
+            </div>
+            <div class="admin-field">
+              <label>Description</label>
+              <input type="text" id="projectDesc" placeholder="Description courte...">
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary" id="addProjectBtn"><i class="fas fa-plus"></i> Ajouter un projet</button>
+        </div>
+        <div class="admin-project-list" id="adminProjectList"></div>
       </div>
 
       <!-- TAB DOCUMENTS -->
@@ -356,17 +398,6 @@
           <label><i class="fab fa-gitlab"></i> GitLab</label>
           <input type="url" id="adminGitlabUrl" placeholder="https://gitlab.com/...">
         </div>
-        <div class="admin-field-group">
-          <div class="admin-field">
-            <label><i class="fab fa-gitlab"></i> ID Projet LibreHex</label>
-            <input type="text" id="adminGitlab1" placeholder="80307614">
-          </div>
-          <div class="admin-field">
-            <label><i class="fab fa-gitlab"></i> ID Projet kiosk-mairie</label>
-            <input type="text" id="adminGitlab2" placeholder="80202006">
-          </div>
-        </div>
-
         <div class="admin-section-title"><i class="fas fa-address-card"></i> Contact</div>
         <div class="admin-field-group">
           <div class="admin-field">
@@ -506,18 +537,32 @@
 
       <!-- TAB AVANCÉ -->
       <div class="admin-tab-content" id="tab-advanced">
-        <div class="admin-section-title"><i class="fas fa-key"></i> Sécurité</div>
+        <div class="admin-section-title"><i class="fas fa-shield-halved"></i> Sécurité</div>
+        <div class="admin-field">
+          <label><i class="fas fa-envelope"></i> Email administrateur</label>
+          <input type="email" id="adminRecoveryEmail" placeholder="admin@example.com">
+          <span class="admin-hint">Email affiché en cas d'oubli du mot de passe. Aucun email n'est stocké sur un serveur.</span>
+        </div>
         <div class="admin-field-group">
-          <div class="admin-field">
-            <label>Mot de passe actuel</label>
-            <input type="password" id="adminCurrentPwd" value="admin123">
-          </div>
           <div class="admin-field">
             <label>Nouveau mot de passe</label>
             <input type="password" id="adminNewPwd" placeholder="Minimum 4 caractères">
           </div>
+          <div class="admin-field">
+            <label>Confirmer le mot de passe</label>
+            <input type="password" id="adminConfirmPwd" placeholder="Retaper le mot de passe">
+          </div>
         </div>
         <button class="btn btn-primary btn-sm" id="changePwdBtn"><i class="fas fa-key"></i> Changer le mot de passe</button>
+        <p class="admin-hint" style="margin-top:6px">Le mot de passe est haché (SHA-256) avant d'être stocké.</p>
+
+        <div class="admin-section-title" style="margin-top:28px"><i class="fas fa-shield"></i> Double authentification (2FA)</div>
+        <div class="admin-field">
+          <label>Code PIN (4 à 8 chiffres)</label>
+          <input type="password" id="adminPin" placeholder="123456" maxlength="8" inputmode="numeric">
+          <span class="admin-hint">Un code supplémentaire demandé après le mot de passe. Laissez vide puis valider pour désactiver.</span>
+        </div>
+        <button class="btn btn-primary btn-sm" id="setPinBtn"><i class="fas fa-check"></i> Valider le PIN</button>
 
         <div class="admin-section-title" style="margin-top:28px"><i class="fas fa-database"></i> Données</div>
         <div class="admin-btn-group">
@@ -561,6 +606,26 @@
       </div>
       <button class="btn btn-ghost btn-sm" id="pwdCancel" style="width:100%;margin-top:8px">Annuler</button>
       <p class="pwd-shortcut">Raccourci : <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd></p>
+      <p class="pwd-hint" id="pwdHint" style="display:none">Mot de passe oublié ? Contactez <span id="pwdHintEmail"></span></p>
+    </div>
+  </div>
+
+  <!-- ============ PIN MODAL (2FA) ============ -->
+  <div class="modal-overlay" id="pinOverlay" style="display:none"></div>
+  <div class="modal" id="pinModal" style="display:none">
+    <div class="modal-content pwd-modal">
+      <div class="pwd-icon"><i class="fas fa-shield-halved"></i></div>
+      <h3>Double authentification</h3>
+      <p class="pwd-sub">Entrez le code PIN à 6 chiffres</p>
+      <div class="pwd-input-group">
+        <input type="password" id="pinInput" placeholder="Code PIN" maxlength="8" inputmode="numeric" autocomplete="off">
+        <i class="fas fa-shield-halved pwd-input-icon"></i>
+      </div>
+      <p class="pwd-error" id="pinError">Code PIN incorrect</p>
+      <div class="pwd-actions">
+        <button class="btn btn-primary" id="pinSubmit" style="flex:1"><i class="fas fa-unlock"></i> Valider</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="pinCancel" style="width:100%;margin-top:8px">Annuler</button>
     </div>
   </div>
 

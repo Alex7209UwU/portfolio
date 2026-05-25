@@ -10,7 +10,10 @@
     },
     cv: { url: '', pdf: '' },
     letter: { url: '', pdf: '' },
-    projects: { gitlabIds: ['80307614', '80202006'], gitlabUrl: 'https://gitlab.com/alex7209' },
+    projects: { gitlabUrl: 'https://gitlab.com/alex7209', items: [
+      { name: 'LibreHex', desc: 'Suite collaborative open-source française intégrant 25+ services.', gitlabId: '80307614', url: '' },
+      { name: 'kiosk-mairie-display', desc: 'Système d\'affichage dynamique pour mairies sur Raspberry Pi.', gitlabId: '80202006', url: '' }
+    ] },
     social: {
       linkedin: 'https://www.linkedin.com/in/alexis-ailhas-giroud-991280354/',
       email: 'alexis.giroudpro@proton.me',
@@ -23,7 +26,9 @@
     sections: { cv: true, letter: true, projects: true, blog: true },
     blog: [],
     design: { accentColor: '#3b82f6', defaultTheme: 'dark', fontHeading: "'Poppins','Inter',sans-serif", customCSS: '' },
-    password: 'admin123'
+    password: 'admin123',
+    pinHash: '',
+    adminEmail: ''
   };
 
   let config = loadConfig();
@@ -32,13 +37,34 @@
   function loadConfig() {
     try {
       const saved = localStorage.getItem('portfolio_config');
-      if (saved) return deepMerge(clone(DEFAULT_CONFIG), JSON.parse(saved));
+      if (saved) {
+        const cfg = deepMerge(clone(DEFAULT_CONFIG), JSON.parse(saved));
+        if (cfg.projects && cfg.projects.gitlabIds) {
+          const ids = cfg.projects.gitlabIds;
+          const names = ['LibreHex', 'kiosk-mairie-display'];
+          const descs = ['Suite collaborative open-source française.', 'Système d\'affichage dynamique pour mairies.'];
+          cfg.projects.items = ids.map((id, i) => ({ name: names[i] || 'Projet', desc: descs[i] || '', gitlabId: id, url: '' }));
+          delete cfg.projects.gitlabIds;
+        }
+        return cfg;
+      }
     } catch(e) { console.warn('Config load error:', e); }
     return clone(DEFAULT_CONFIG);
   }
 
   function saveConfig() { localStorage.setItem('portfolio_config', JSON.stringify(config)); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function isHashed(s) { return /^[0-9a-f]{64}$/i.test(s); }
+
+  async function hashPassword(pwd) {
+    if (!pwd) return '';
+    try {
+      const enc = new TextEncoder().encode(pwd);
+      const hash = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch(e) { console.warn('SHA-256 not available'); return pwd; }
+  }
 
   function deepMerge(t, s) {
     const r = clone(t);
@@ -197,36 +223,33 @@
   async function loadProjects() {
     const grid = el('projectsGrid');
     if (!grid) return;
-    const ids = config.projects.gitlabIds || [];
-    const names = ['LibreHex', 'kiosk-mairie-display'];
-    const descs = [
-      'Suite collaborative open-source française intégrant 25+ services.',
-      'Système d\'affichage dynamique pour mairies sur Raspberry Pi.'
-    ];
-    const results = await Promise.all(ids.map(id => fetchGitLabProject(id)));
+    const items = config.projects.items || [];
+    const results = await Promise.all(items.map(p => p.gitlabId ? fetchGitLabProject(p.gitlabId) : Promise.resolve(null)));
     grid.innerHTML = '';
     results.forEach((p, i) => {
+      const item = items[i] || { name: 'Projet', desc: '', gitlabId: '', url: '' };
       const card = document.createElement('div');
       card.className = 'project-card';
       card.setAttribute('data-aos', 'fade-up');
       if (i > 0) card.setAttribute('data-aos-delay', String(i * 100));
-      const url = p ? p.web_url : (config.projects.gitlabUrl || '#');
+      const gitlabUrl = p ? p.web_url : (item.url || config.projects.gitlabUrl || '#');
+      const linkUrl = item.url || gitlabUrl;
       if (p) {
         card.innerHTML = `
-          <h3>${escHtml(p.name || names[i])}</h3>
-          <p class="project-desc">${escHtml(p.description || descs[i])}</p>
+          <h3>${escHtml(p.name || item.name)}</h3>
+          <p class="project-desc">${escHtml(p.description || item.desc)}</p>
           <div class="project-meta">
             <span class="project-lang">${escHtml(p.language || 'Multi')}</span>
             <span><i class="fas fa-star"></i> ${p.star_count || 0}</span>
             <span><i class="fas fa-code-fork"></i> ${p.forks_count || 0}</span>
             <span><i class="fas fa-clock"></i> ${p.last_activity_at ? new Date(p.last_activity_at).toLocaleDateString('fr-FR') : '—'}</span>
           </div>
-          <a href="${url}" target="_blank" class="project-link">Voir sur GitLab <i class="fas fa-arrow-right"></i></a>`;
+          <a href="${escHtml(linkUrl)}" target="_blank" rel="noopener noreferrer" class="project-link">${p ? 'Voir sur GitLab' : 'Voir le projet'} <i class="fas fa-arrow-right"></i></a>`;
       } else {
         card.innerHTML = `
-          <h3>${escHtml(names[i])}</h3>
-          <p class="project-desc">${escHtml(descs[i])}</p>
-          <a href="${url}" target="_blank" class="project-link">Voir sur GitLab <i class="fas fa-arrow-right"></i></a>`;
+          <h3>${escHtml(item.name)}</h3>
+          <p class="project-desc">${escHtml(item.desc)}</p>
+          ${linkUrl !== '#' ? '<a href="' + escHtml(linkUrl) + '" target="_blank" rel="noopener noreferrer" class="project-link">Voir le projet <i class="fas fa-arrow-right"></i></a>' : ''}`;
       }
       grid.appendChild(card);
     });
@@ -236,12 +259,13 @@
 
   async function loadGitLabStats() {
     try {
-      const ids = config.projects.gitlabIds || [];
+      const items = config.projects.items || [];
+      const ids = items.filter(i => i.gitlabId).map(i => i.gitlabId);
       const proj = await Promise.all(ids.map(id => fetchGitLabProject(id)));
       const valid = proj.filter(p => p);
       const pEl = el('gitlabProjects');
       const sEl = el('gitlabStars');
-      if (pEl) pEl.textContent = ids.length;
+      if (pEl) pEl.textContent = items.length;
       if (sEl) sEl.textContent = valid.reduce((s, p) => s + (p.star_count || 0), 0);
     } catch(e) {
       const pEl = el('gitlabProjects');
@@ -507,11 +531,44 @@
     if (err) err.style.display = 'none';
     const inp = el('pwdInput');
     if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 100); }
+    updatePwdHint();
   }
 
   function closePwdModal() {
     if (pwdModal) pwdModal.style.display = 'none';
     if (pwdOverlay) pwdOverlay.style.display = 'none';
+  }
+
+  function openPinModal() {
+    const pm = el('pinModal'), po = el('pinOverlay');
+    if (pm) pm.style.display = 'block';
+    if (po) po.style.display = 'block';
+    const err = el('pinError');
+    if (err) err.style.display = 'none';
+    const inp = el('pinInput');
+    if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 100); }
+  }
+
+  function closePinModal() {
+    const pm = el('pinModal'), po = el('pinOverlay');
+    if (pm) pm.style.display = 'none';
+    if (po) po.style.display = 'none';
+  }
+
+  async function checkPin() {
+    const inp = el('pinInput');
+    if (!inp) return;
+    const entered = inp.value;
+    const stored = config.pinHash;
+    let match = false;
+    if (isHashed(stored)) { const h = await hashPassword(entered); match = h === stored; }
+    else { match = entered === stored; }
+    if (match) { closePinModal(); openAdmin(); }
+    else {
+      const err = el('pinError');
+      if (err) { err.style.display = 'block'; }
+      if (inp) { inp.value = ''; inp.focus(); }
+    }
   }
 
   function openAdmin() {
@@ -533,12 +590,22 @@
     const icon = el('adminLockIcon');
     if (icon) icon.className = 'fas fa-lock';
     document.body.style.overflow = '';
+    renderBlog();
   }
 
-  function checkPwd() {
+  async function checkPwd() {
     const inp = el('pwdInput');
-    if (inp && inp.value === config.password) { closePwdModal(); openAdmin(); }
-    else {
+    if (!inp) return;
+    const entered = inp.value;
+    const stored = config.password;
+    let match = false;
+    if (isHashed(stored)) { const h = await hashPassword(entered); match = h === stored; }
+    else { match = entered === stored; }
+    if (match) {
+      closePwdModal();
+      if (config.pinHash) { openPinModal(); }
+      else { openAdmin(); }
+    } else {
       const err = el('pwdError');
       if (err) { err.style.display = 'block'; }
       if (inp) { inp.value = ''; inp.focus(); }
@@ -553,8 +620,24 @@
   const pwdCancel = el('pwdCancel');
   if (pwdCancel) pwdCancel.addEventListener('click', closePwdModal);
   if (pwdOverlay) pwdOverlay.addEventListener('click', closePwdModal);
+  const pinSubmit = el('pinSubmit');
+  if (pinSubmit) pinSubmit.addEventListener('click', checkPin);
+  const pinInp = el('pinInput');
+  if (pinInp) pinInp.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPin(); });
+  const pinCancel = el('pinCancel');
+  if (pinCancel) pinCancel.addEventListener('click', closePinModal);
+  const pinOverlay = el('pinOverlay');
+  if (pinOverlay) pinOverlay.addEventListener('click', closePinModal);
   const adminClose = el('adminClose');
   if (adminClose) adminClose.addEventListener('click', closeAdmin);
+
+  // Show admin email hint in password modal
+  function updatePwdHint() {
+    const hint = el('pwdHint'), hintEmail = el('pwdHintEmail');
+    if (!hint) return;
+    if (config.adminEmail) { hint.style.display = 'block'; if (hintEmail) hintEmail.textContent = config.adminEmail; }
+    else { hint.style.display = 'none'; }
+  }
 
 
   // ADMIN TABS
@@ -595,8 +678,6 @@
     setVal('adminCVPDF', config.cv.pdf);
     setVal('adminLetterUrl', config.letter.url);
     setVal('adminLetterPDF', config.letter.pdf);
-    setVal('adminGitlab1', (config.projects.gitlabIds || [])[0]);
-    setVal('adminGitlab2', (config.projects.gitlabIds || [])[1]);
     setVal('adminGitlabUrl', config.projects.gitlabUrl);
     setVal('adminLinkedin', config.social.linkedin);
     setVal('adminEmail', config.social.email);
@@ -605,14 +686,10 @@
     setVal('adminFormService', config.contact.service);
     setVal('adminFormspreeUrl', config.contact.formspreeUrl);
     setVal('adminFormsubmitEmail', config.contact.formsubmitEmail);
-    setVal('adminCurrentPwd', config.password);
+    setVal('adminRecoveryEmail', config.adminEmail || '');
     toggleFormFields();
-    setVal('adminAccentColor', config.design.accentColor);
-    setVal('adminAccentColorText', config.design.accentColor);
-    setVal('adminDefaultTheme', config.design.defaultTheme);
-    setVal('adminFontHeading', config.design.fontHeading);
-    setVal('adminCustomCSS', config.design.customCSS);
     setupDropZones();
+    renderProjectAdmin();
   }
 
   function toggleFormFields() {
@@ -668,7 +745,6 @@
     config.cv.pdf = g('adminCVPDF');
     config.letter.url = g('adminLetterUrl');
     config.letter.pdf = g('adminLetterPDF');
-    config.projects.gitlabIds = [g('adminGitlab1'), g('adminGitlab2')];
     config.projects.gitlabUrl = g('adminGitlabUrl');
     config.social.linkedin = g('adminLinkedin');
     config.social.email = g('adminEmail');
@@ -678,6 +754,7 @@
     config.contact.service = svcEl ? svcEl.value : 'formspree';
     config.contact.formspreeUrl = g('adminFormspreeUrl');
     config.contact.formsubmitEmail = g('adminFormsubmitEmail');
+    config.adminEmail = g('adminRecoveryEmail');
     const acEl = el('adminAccentColor');
     config.design.accentColor = acEl ? acEl.value : '#3b82f6';
     const dtEl = el('adminDefaultTheme');
@@ -720,6 +797,7 @@
       applyAccent(config.design.accentColor);
       applyFont(config.design.fontHeading);
       applyCustomCSS(config.design.customCSS);
+      setTheme(config.design.defaultTheme);
     }
     renderSocial();
     updateContactLinks();
@@ -728,17 +806,35 @@
 
   // Change password
   const changePwd = el('changePwdBtn');
-  if (changePwd) changePwd.addEventListener('click', () => {
-    const np = el('adminNewPwd');
-    if (!np) return;
-    const pwd = np.value.trim();
+  if (changePwd) changePwd.addEventListener('click', async () => {
+    const np = el('adminNewPwd'), cp = el('adminConfirmPwd');
+    if (!np || !cp) return;
+    const pwd = np.value.trim(), confirm = cp.value.trim();
     if (!pwd || pwd.length < 4) { toast('Minimum 4 caractères', 'error'); return; }
-    config.password = pwd;
-    const cp = el('adminCurrentPwd');
-    if (cp) cp.value = pwd;
+    if (pwd !== confirm) { toast('Les mots de passe ne correspondent pas', 'error'); return; }
+    config.password = await hashPassword(pwd);
     saveConfig();
     toast('Mot de passe changé', 'success');
-    np.value = '';
+    np.value = ''; cp.value = '';
+  });
+  // Set PIN
+  const setPin = el('setPinBtn');
+  if (setPin) setPin.addEventListener('click', async () => {
+    const pinEl = el('adminPin');
+    if (!pinEl) return;
+    const pin = pinEl.value.trim();
+    if (!pin) {
+      config.pinHash = '';
+      saveConfig();
+      toast('2FA désactivé', 'success');
+      pinEl.value = '';
+      return;
+    }
+    if (!/^\d{4,8}$/.test(pin)) { toast('Le PIN doit faire 4 à 8 chiffres', 'error'); return; }
+    config.pinHash = await hashPassword(pin);
+    saveConfig();
+    toast('PIN 2FA enregistré', 'success');
+    pinEl.value = '';
   });
 
   // Blog add
@@ -785,6 +881,35 @@
     toast('Réseau ajouté', 'success');
   });
 
+  // Project admin
+  function renderProjectAdmin() {
+    const list = el('adminProjectList');
+    if (!list) return;
+    const items = config.projects.items || [];
+    if (!items.length) { list.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">Aucun projet</p>'; return; }
+    list.innerHTML = items.map((p, i) =>
+      '<div class="admin-project-item"><span><strong>' + escHtml(p.name) + '</strong>' + (p.gitlabId ? ' — ID: ' + escHtml(p.gitlabId) : '') + '</span><button class="project-del" data-i="' + i + '"><i class="fas fa-trash"></i></button></div>'
+    ).join('');
+    list.querySelectorAll('.project-del').forEach(b => b.addEventListener('click', function() {
+      config.projects.items.splice(parseInt(this.dataset.i), 1);
+      saveConfig(); loadProjects(); renderProjectAdmin();
+      toast('Projet supprimé', 'info');
+    }));
+  }
+  const addProjectBtn = el('addProjectBtn');
+  if (addProjectBtn) addProjectBtn.addEventListener('click', () => {
+    const nameEl = el('projectName'), descEl = el('projectDesc'), idEl = el('projectGitlabId'), urlEl = el('projectUrl');
+    if (!nameEl || !descEl) return;
+    const name = nameEl.value.trim(), desc = descEl.value.trim();
+    if (!name) { toast('Nom du projet obligatoire', 'error'); return; }
+    if (!config.projects.items) config.projects.items = [];
+    config.projects.items.push({ name, desc, gitlabId: (idEl ? idEl.value.trim() : ''), url: (urlEl ? urlEl.value.trim() : '') });
+    saveConfig();
+    if (nameEl) nameEl.value = ''; if (descEl) descEl.value = ''; if (idEl) idEl.value = ''; if (urlEl) urlEl.value = '';
+    loadProjects(); renderProjectAdmin();
+    toast('Projet ajouté', 'success');
+  });
+
   // Export
   const exportBtn = el('exportConfigBtn');
   if (exportBtn) exportBtn.addEventListener('click', () => {
@@ -805,10 +930,16 @@
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = async (ev) => {
         try {
           const data = JSON.parse(ev.target.result);
           config = deepMerge(clone(DEFAULT_CONFIG), data);
+          if (config.password && !isHashed(config.password)) {
+            config.password = await hashPassword(config.password);
+          }
+          if (config.pinHash && !isHashed(config.pinHash)) {
+            config.pinHash = await hashPassword(config.pinHash);
+          }
           saveConfig();
           applyAll();
           toast('Configuration importée', 'success');
@@ -844,12 +975,27 @@
       e.preventDefault();
       isAdmin ? closeAdmin() : openPwdModal();
     }
-    if (e.key === 'Escape') { if (isAdmin) closeAdmin(); closePwdModal(); }
+    if (e.key === 'Escape') { if (isAdmin) closeAdmin(); closePwdModal(); closePinModal(); }
   });
+
+  // ========== MIGRATE PASSWORD ==========
+  async function migratePassword() {
+    let changed = false;
+    if (config.password && !isHashed(config.password)) {
+      config.password = await hashPassword(config.password);
+      changed = true;
+    }
+    if (config.pinHash && !isHashed(config.pinHash)) {
+      config.pinHash = await hashPassword(config.pinHash);
+      changed = true;
+    }
+    if (changed) saveConfig();
+  }
 
   // ========== INIT ==========
   function init() {
     try {
+      migratePassword();
       if (config.design) {
         applyAccent(config.design.accentColor);
         applyFont(config.design.fontHeading);

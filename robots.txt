@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://alex7209uwu.github.io/portfolio/sitemap.xml
